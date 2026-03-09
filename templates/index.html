@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角洲交易行 - 物品商店</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/fontawesome.min.css') }}" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --background-color: #ecf0f1;
+            --card-bg: #ffffff;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--background-color) 0%, #d5dbdb 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 4rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        .store-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .store-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+        }
+        
+        .item-image {
+            height: 200px;
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #6c757d;
+        }
+        
+        .item-price {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+        
+        .item-category {
+            background: var(--secondary-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        
+        .filter-section {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .loading-spinner {
+            display: none;
+        }
+        
+        .pagination-container {
+            margin-top: 2rem;
+        }
+        
+        .stats-badge {
+            background: linear-gradient(to right, var(--secondary-color), var(--accent-color));
+            color: white;
+            padding: 0.6rem 1.5rem;
+            border-radius: 25px;
+            font-weight: bold;
+            display: inline-block;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: transform 0.2s ease;
+            min-width: 280px;
+        }
+        
+        .stats-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        /* 响应式调整 - 小屏幕时垂直排列 */
+        @media (max-width: 768px) {
+            .hero-section h1 {
+                font-size: 1.75rem;
+            }
+            
+            .hero-section p.lead {
+                font-size: 0.9rem;
+            }
+            
+            .stats-badge {
+                padding: 0.4rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+        
+        .currency-gold {
+            color: #gold;
+        }
+        
+        .currency-rmb {
+            color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-store me-2"></i>三角洲交易行
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto" id="category-menu">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" onclick="filterByCategory('全部')">🏠 全部</a>
+                    </li>
+                    <!-- 分类菜单将动态生成 -->
+                </ul>
+                <div class="navbar-nav ms-auto">
+                    <span class="nav-link text-white">💡 点击物品图片查看详细分析</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 英雄区域 -->
+    <section class="hero-section text-center">
+        <div class="container">
+            <h1 class="display-4 fw-bold mb-3">游戏装备交易市场</h1>
+            <p class="lead mb-4">实时价格 | 热门物品 | 数据分析</p>
+            
+            <!-- 统计信息区域 - 水平分布，一行显示两个 -->
+            <div class="row justify-content-center g-3">
+                <div class="col-auto">
+                    <span class="stats-badge">
+                        <i class="fas fa-box me-2"></i>物品总数：<span id="total-items">0</span>
+                    </span>
+                </div>
+                <div class="col-auto">
+                    <span class="stats-badge">
+                        <i class="fas fa-coins me-2"></i>平均价格：<span id="avg-price">0</span>哈弗币
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="container">
+        {% include 'components/_search_bar.html' %}
+        
+        <!-- 商品展示区域 -->
+        <div class="row" id="items-container">
+            <!-- 商品卡片将通过 JavaScript 动态生成 -->
+        </div>
+        
+        <!-- 分页 -->
+        <div class="pagination-container text-center" id="pagination-container">
+            <nav>
+                <ul class="pagination justify-content-center" id="pagination">
+                    <!-- 分页按钮将通过 JavaScript 生成 -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- 物品分析模态框 -->
+    <div class="modal fade" id="itemAnalysisModal" tabindex="-1" aria-labelledby="analysisModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="analysisModalLabel">物品价格分析</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="analysis-content">
+                        <!-- 分析内容将在这里动态加载 -->
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-3">正在分析物品数据...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部 -->
+    <footer class="bg-dark text-light text-center py-4 mt-5">
+        <div class="container">
+            <p>&copy; 2026 三角洲交易行数据分析平台</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/plotly.min.js') }}"></script>
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let allCategories = [];
+        let currentCategory = '全部';
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCategories();
+            loadStoreData();
+            setupEventListeners();
+            loadItems(1);
+        });
+
+        function setupEventListeners() {
+            let searchTimeout;
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    loadItems(1);
+                }, 500);
+            });
+        
+            document.getElementById('refresh-btn').addEventListener('click', () => {
+                loadStoreData();
+                loadItems(1);
+            });
+        }
+
+        function filterByCategory(category) {
+            document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            currentCategory = category;
+            loadItems(1);
+        }
+
+        async function loadStoreData() {
+            try {
+                const response = await fetch('/api/statistics');
+                const stats = await response.json();
+            
+                document.getElementById('total-items').textContent = stats.total_items || 0;
+                document.getElementById('avg-price').textContent = Math.round(stats.avg_price || 0);
+                loadCategoryOptions(stats.categories || {});
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+            }
+        }
+
+        function loadCategoryOptions(categories) {
+            const select = document.getElementById('category-filter');
+            allCategories = Object.keys(categories);
+            select.innerHTML = '<option value="">全部分类</option>';
+            allCategories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = `${category} (${categories[category]})`;
+                select.appendChild(option);
+            });
+        }
+
+        async function loadItems(page = 1) {
+            showLoading(true);
+            try {
+                const searchTerm = document.getElementById('search-input').value.trim();
+                const params = new URLSearchParams({ page: page, category: currentCategory });
+                if (searchTerm) {
+                    params.append('search', searchTerm);
+                }
+            
+                const response = await fetch(`/api/items?${params}`);
+                const data = await response.json();
+            
+                currentPage = data.page;
+                totalPages = Math.ceil(data.total / data.per_page);
+            
+                displayItems(data.items);
+                updatePagination(data.total, data.page, data.per_page);
+            } catch (error) {
+                console.error('加载物品失败:', error);
+                document.getElementById('items-container').innerHTML = 
+                    '<div class="col-12 text-center"><p class="text-danger">加载物品数据失败，请稍后重试</p></div>';
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayItems(items) {
+            const container = document.getElementById('items-container');
+            if (!items || items.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center"><p class="text-muted">暂无物品数据</p></div>';
+                return;
+            }
+        
+            container.innerHTML = items.map(item => `
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="store-card">
+                        <div class="item-image" style="cursor: pointer;" onclick="showItemAnalysis('${item.name.replace(/'/g, "\\'")}')">
+                            ${item.image_url ? 
+                                `<img src="${item.image_url}" alt="${item.name}" class="img-fluid" style="max-height: 180px; object-fit: cover;" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-cube\\'></i>'">` :
+                                '<i class="fas fa-cube"></i>'
+                            }
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2" style="min-width: 0;">
+                                <h6 class="card-title mb-0 text-truncate" title="${item.name}">${item.name}</h6>
+                                <span class="item-category ms-2">${item.category}</span>
+                            </div>
+                            <div class="mb-2">
+                                <span class="item-price ${item.currency === '人民币' ? 'currency-rmb' : 'currency-gold'}">
+                                    ${Math.round(item.price)} ${item.currency}
+                                </span>
+                            </div>
+                            <small class="text-muted text-truncate">
+                                <i class="fas fa-clock me-1"></i>${formatTime(item.crawl_time)}
+                            </small>
+                            <div class="mt-auto pt-2">
+                                <small class="badge bg-secondary">${item.source}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updatePagination(totalItems, currentPage, perPage) {
+            const pagination = document.getElementById('pagination');
+            const maxVisiblePages = 5;
+            const totalPages = Math.ceil(totalItems / perPage);
+        
+            let html = `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadItems(${Math.max(1, currentPage - 1)})">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>`;
+        
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+        
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="loadItems(${i})">${i}</a>
+                </li>`;
+            }
+        
+            html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadItems(${Math.min(totalPages, currentPage + 1)})">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>`;
+        
+            pagination.innerHTML = html;
+        }
+
+        function showLoading(show) {
+            const spinner = document.getElementById('loading-spinner');
+            const container = document.getElementById('items-container');
+            if (show) {
+                spinner.style.display = 'block';
+                container.style.display = 'none';
+            } else {
+                spinner.style.display = 'none';
+                container.style.display = 'flex';
+            }
+        }
+
+        function formatTime(timeString) {
+            if (!timeString) return '未知时间';
+            try {
+                const date = new Date(timeString);
+                return date.toLocaleDateString('zh-CN') + ' ' + date.toLocaleTimeString('zh-CN', {hour12: false});
+            } catch {
+                return timeString;
+            }
+        }
+
+        async function showItemAnalysis(itemName) {
+            const modal = new bootstrap.Modal(document.getElementById('itemAnalysisModal'));
+            modal.show();
+        
+            document.getElementById('analysisModalLabel').textContent = `${itemName} - 价格分析`;
+            document.getElementById('analysis-content').innerHTML = 
+                '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">加载中...</span></div><p class="mt-2">正在分析价格数据...</p></div>';
+        
+            try {
+                const response = await fetch(`/api/items/${encodeURIComponent(itemName)}/history?days=30`);
+                let historyData;
+            
+                if (response.ok) {
+                    historyData = await response.json();
+                    if (!historyData || historyData.length === 0) {
+                        const itemsResponse = await fetch('/api/items?search=' + encodeURIComponent(itemName));
+                        if (itemsResponse.ok) {
+                            const itemsData = await itemsResponse.json();
+                            if (itemsData.items && itemsData.items.length > 0) {
+                                const currentItem = itemsData.items[0];
+                                historyData = [{
+                                    'time': new Date().toISOString(),
+                                    'price': currentItem.price,
+                                    'timestamp': Math.floor(Date.now() / 1000)
+                                }];
+                            }
+                        }
+                    }
+                } else {
+                    historyData = [];
+                }
+            
+                displayAnalysisResults(itemName, historyData);
+            } catch (error) {
+                console.error('分析失败:', error);
+                document.getElementById('analysis-content').innerHTML = 
+                    `<div class="alert alert-danger"><h5>分析失败</h5><p>获取数据时出现错误，请稍后重试。</p><small class="text-muted">错误详情：${error.message}</small></div>`;
+            }
+        }
+
+        function displayAnalysisResults(itemName, historyData) {
+            if (!historyData || historyData.length === 0) {
+                document.getElementById('analysis-content').innerHTML = 
+                    '<div class="alert alert-info">暂无该物品的历史数据</div>';
+                return;
+            }
+        
+            try {
+                const prices = historyData.map(d => parseFloat(d.price));
+                // 兼容 time 和 date 字段
+                const dates = historyData.map(d => d.time || d.date || '未知日期');
+                
+                // 添加调试日志
+                console.log('历史数据:', historyData);
+                console.log('解析后的日期数组:', dates);
+                console.log('解析后的价格数组:', prices);
+                console.log('数据条数:', historyData.length);
+            
+                if (prices.some(isNaN) || prices.length === 0) {
+                    throw new Error('价格数据无效');
+                }
+            
+                const currentPrice = prices[prices.length - 1];
+                const maxPrice = Math.max(...prices);
+                const minPrice = Math.min(...prices);
+                const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+            
+                const priceChange = currentPrice - (prices.length > 1 ? prices[prices.length - 2] : prices[0]);
+                const basePrice = prices.length > 1 ? prices[prices.length - 2] : prices[0];
+                const priceChangePercent = basePrice !== 0 ? ((priceChange / basePrice) * 100).toFixed(2) : '0.00';
+            
+                const variance = prices.reduce((sum, price) => sum + Math.pow(price - avgPrice, 2), 0) / prices.length;
+                const volatility = Math.sqrt(variance) / avgPrice * 100;
+            
+                let upDays = 0, downDays = 0;
+                for (let i = 1; i < prices.length; i++) {
+                    if (prices[i] > prices[i-1]) upDays++;
+                    else if (prices[i] < prices[i-1]) downDays++;
+                }
+            
+                const html = `
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card text-center ${priceChange >= 0 ? 'border-success' : 'border-danger'}">
+                                <div class="card-body">
+                                    <h6 class="text-muted">当前价格</h6>
+                                    <h3 class="${priceChange >= 0 ? 'text-success' : 'text-danger'}">
+                                        ${Math.round(currentPrice)} 哈弗币
+                                    </h3>
+                                    <small class="${priceChange >= 0 ? 'text-success' : 'text-danger'}">
+                                        <i class="fas fa-${priceChange >= 0 ? 'arrow-up' : 'arrow-down'}"></i>
+                                        ${priceChangePercent}%
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h6 class="text-muted">最高价</h6>
+                                    <h4 class="text-success">${Math.round(maxPrice)} 哈弗币</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h6 class="text-muted">最低价</h6>
+                                    <h4 class="text-danger">${Math.round(minPrice)} 哈弗币</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <div class="card-body">
+                                    <h6 class="text-muted">波动率</h6>
+                                    <h4 class="text-warning">${volatility.toFixed(2)}%</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <!-- 价格走势图 - 单独一行 -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>价格走势图</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="priceChart" style="height: 300px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <!-- 价格分布 - 单独一行 -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="fas fa-balance-scale me-2"></i>价格分布</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="distributionChart" style="height: 300px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <!-- 技术分析 - 单独一行 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>技术分析</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="techChart" style="height: 300px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            
+                document.getElementById('analysis-content').innerHTML = html;
+            
+                setTimeout(() => {
+                    try {
+                        drawAnalysisCharts(dates, prices, itemName);
+                    } catch (chartError) {
+                        console.error('绘制图表时出错:', chartError);
+                    }
+                }, 100);
+            
+            } catch (error) {
+                console.error('显示分析结果时出错:', error);
+                document.getElementById('analysis-content').innerHTML = 
+                    `<div class="alert alert-danger"><h5>数据显示错误</h5><p>处理分析数据时出现错误：${error.message}</p><small class="text-muted">请稍后重试</small></div>`;
+            }
+        }
+
+        function drawAnalysisCharts(dates, prices, itemName) {
+            const priceTrace = {
+                x: dates,
+                y: prices,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: '价格',
+                line: { color: '#3498db', width: 3 },
+                marker: { size: 6 }
+            };
+        
+            Plotly.newPlot('priceChart', [priceTrace], {
+                title: `${itemName} 价格走势`,
+                xaxis: { title: '日期' },
+                yaxis: { 
+                    title: '价格 (哈弗币)',
+                    autorange: true  // 自动调整 Y 轴范围
+                },
+                showlegend: false,
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            }, { responsive: true });
+        
+            // 动态计算价格区间（基于实际数据）
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            const priceRange = maxPrice - minPrice;
+            
+            // 创建 5-8 个合理的区间
+            let numRanges = 5;
+            if (prices.length > 20) numRanges = 7;
+            if (prices.length > 30) numRanges = 8;
+            
+            // 计算区间大小（向上取整到整数）
+            const rangeSize = Math.ceil(priceRange / numRanges);
+            // 确保区间大小是整数且合理
+            const niceRangeSize = roundToNiceNumber(rangeSize);
+            
+            // 重新计算实际区间数和起始点
+            const actualMin = Math.floor(minPrice / niceRangeSize) * niceRangeSize;
+            const actualMax = Math.ceil(maxPrice / niceRangeSize) * niceRangeSize;
+            const actualRanges = Math.ceil((actualMax - actualMin) / niceRangeSize);
+            
+            const rangeLabels = [];
+            const rangeCounts = new Array(actualRanges).fill(0);
+            
+            // 生成区间标签
+            for (let i = 0; i < actualRanges; i++) {
+                const start = actualMin + i * niceRangeSize;
+                const end = start + niceRangeSize;
+                rangeLabels.push(`${formatNumber(start)}-${formatNumber(end)}`);
+            }
+            
+            // 统计每个区间的数量
+            prices.forEach(price => {
+                const index = Math.floor((price - actualMin) / niceRangeSize);
+                if (index >= 0 && index < actualRanges) {
+                    rangeCounts[index]++;
+                } else if (index >= actualRanges) {
+                    // 处理边界情况（最大值）
+                    rangeCounts[actualRanges - 1]++;
+                }
+            });
+        
+            const distTrace = {
+                x: rangeLabels,
+                y: rangeCounts,
+                type: 'bar',
+                marker: { 
+                    color: '#27ae60',
+                    line: {
+                        color: '#1e8449',
+                        width: 1
+                    }
+                },
+                text: rangeCounts,
+                textposition: 'auto',
+                hoverinfo: 'x+y'
+            };
+        
+            Plotly.newPlot('distributionChart', [distTrace], {
+                title: '价格分布',
+                xaxis: { title: '价格区间' },
+                yaxis: { title: '数量' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            }, { responsive: true });
+        
+            const calculateMA = (data, period) => {
+                const ma = [];
+                for (let i = 0; i < data.length; i++) {
+                    if (i < period - 1) {
+                        ma.push(null);
+                    } else {
+                        const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
+                        ma.push(sum / period);
+                    }
+                }
+                return ma;
+            };
+        
+            const ma5 = calculateMA(prices, 5);
+            const ma10 = calculateMA(prices, 10);
+        
+            const techTraces = [
+                {
+                    x: dates,
+                    y: prices,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '价格',
+                    line: { color: '#3498db', width: 2 }
+                },
+                {
+                    x: dates,
+                    y: ma5,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '5 日均线',
+                    line: { color: '#e74c3c', width: 2, dash: 'dash' }
+                },
+                {
+                    x: dates,
+                    y: ma10,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '10 日均线',
+                    line: { color: '#f39c12', width: 2, dash: 'dash' }
+                }
+            ];
+        
+            Plotly.newPlot('techChart', techTraces, {
+                title: '技术分析',
+                xaxis: { title: '日期' },
+                yaxis: { title: '价格 (哈弗币)' },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            }, { responsive: true });
+        }
+    
+        async function loadCategories() {
+            try {
+                const response = await fetch('/api/categories');
+                const data = await response.json();
+            
+                if (data.success) {
+                    const menuContainer = document.getElementById('category-menu');
+                    const categoryIcons = {
+                        '物品': '📦', '子弹': '🔫', '钥匙卡': '🔑',
+                        '收集品': '💎', '消耗品': '💊', '配件': '⚙️', '装备': '🛡️'
+                    };
+                
+                    data.categories.forEach(category => {
+                        const icon = categoryIcons[category] || '📌';
+                        const li = document.createElement('li');
+                        li.className = 'nav-item';
+                        li.innerHTML = `<a class="nav-link" href="#" onclick="filterByCategory('${category}')">${icon} ${category}</a>`;
+                        menuContainer.appendChild(li);
+                    });
+                
+                    console.log('分类菜单加载成功:', data.categories);
+                }
+            } catch (error) {
+                console.error('加载分类失败:', error);
+            }
+        }
+        
+        // 格式化数字（添加千位分隔符）
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+        
+        // 将数字圆整到美观的值（如 100, 500, 1000 等）
+        function roundToNiceNumber(num) {
+            if (num <= 0) return 100;
+            
+            const magnitude = Math.pow(10, Math.floor(Math.log10(num)));
+            const normalized = num / magnitude;
+            
+            let niceNormalized;
+            if (normalized <= 1) niceNormalized = 1;
+            else if (normalized <= 2) niceNormalized = 2;
+            else if (normalized <= 5) niceNormalized = 5;
+            else niceNormalized = 10;
+            
+            return niceNormalized * magnitude;
+        }
+        
+        // 绘制图表的主函数
+    </script>
+</body>
+</html>
